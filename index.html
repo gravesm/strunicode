@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.1.0/styles/github.min.css">
+  <style>
+    .container {
+      padding-bottom: 80px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="page-header">
+      <h1>A Practical Guide to Strings in Python 2/3</h1>
+    </div>
+    <h2>Intro</h2>
+    <p>When dealing with strings and Unicode in most languages there are few rules to live by. This is no different in python, regardless of whether you are talking about 2 or 3.</p>
+    <ul>
+      <li>You need to know whether you are dealing with bytes or Unicode.</li>
+      <li>If you are dealing with bytes you need to know what encoding those bytes are.</li>
+      <li>In most cases, your application will receive bytes as input and will have to output bytes. You should convert those bytes to Unicode as soon as possible. Remember to make your Unicode sandwich--bytes in, bytes out, Unicode in between.</li>
+    </ul>
+    <p>If you remember nothing else from this, remember that <strong>you need to know whether you are dealing with bytes or Unicode.</strong></p>
+    <p>As a note, when I say Python 2 I mean Python 2.7, and when I say Python 3 I mean Python 3.3+.</p>
+    <h2>The Basics of Strings, Bytes and Unicode</h2>
+    <p>In Python 2, raw strings are bytes. In Python 3, raw strings are Unicode. In both versions, bytes can be created by using the <code>b''</code> syntax, though this is unnecessary in Python 2. In both versions, Unicode can be created by using the <code>u''</code> syntax, though this is unnecessary in Python 3. Let's look at some simple examples using the Unicode code point U+00D8 (Ø). Note that in UTF-8 this character is encoded as two bytes (<code>\xc3x98</code>).</p>
+    <div class="row">
+      <div class="col-md-6">
+        <figure>
+          <figcaption>Python 2</figcaption>
+          <pre>
+<code class="python">&gt;&gt;&gt; 'Ø' == b'Ø'
+True
+&gt;&gt;&gt; 'Ø' == b'\xc3\x98'
+True
+&gt;&gt;&gt; u'Ø' == u'\u00d8'
+True
+&gt;&gt;&gt; len('Ø')
+2
+&gt;&gt;&gt; len(u'Ø')
+1</code></pre>
+            </figure>
+          </div>
+          <div class="col-md-6">
+            <figure>
+              <figcaption>Python 3</figcaption>
+              <pre>
+<code class="python">&gt;&gt;&gt; 'Ø' == u'Ø'
+True
+&gt;&gt;&gt; 'Ø' == b'\xc3\x98'
+False
+&gt;&gt;&gt; 'Ø' == u'\u00d8'
+True
+&gt;&gt;&gt; len('Ø')
+1
+&gt;&gt;&gt; len(b'\xc3\x98')
+2</code></pre>
+            </figure>
+          </div>
+        </div>
+        <p>What should begin to become obvious is that "string" is a loaded term in Python. You need to be thinking in terms of bytes and Unicode, not strings. To repeat one of our rules from the beginning: <em>You need to know whether you are dealing with bytes or Unicode.</em></p>
+        <p>Now that you know what you have (right?) let's look at how we can convert between the two. The two methods you need to remember are <code>.decode()</code> and <code>.encode()</code>, but it's important to make sure you are using them in the correct situations. <code>.decode()</code> is used to convert a byte string into a Unicode string and <code>.encode()</code> is used to convert a Unicode string into a byte string.</p>
+        <div class="row">
+          <div class="col-md-6">
+            <figure>
+              <figcaption>Python 2</figcaption>
+              <pre>
+<code class="python">&gt;&gt;&gt; b'\xc3\x98'.decode('utf-8') == u'\u00d8'
+True
+&gt;&gt;&gt; 'Ø'.decode('utf-8') == u'\u00d8'
+True
+&gt;&gt;&gt; u'\u00d8'.encode('utf-8') == b'\xc3\x98'
+True
+&gt;&gt;&gt; u'Ø'.encode('utf-8') == 'Ø'
+True</code></pre>
+            </figure>
+          </div>
+          <div class="col-md-6">
+            <figure>
+              <figcaption>Python 3</figcaption>
+              <pre>
+<code class="python">&gt;&gt;&gt; b'\xc3\x98'.decode('utf-8') == u'\u00d8'
+True
+&gt;&gt;&gt; 'Ø'.encode('utf-8') == b'\xc3\x98'
+True
+&gt;&gt;&gt; u'\u00d8'.encode('utf-8') == b'\xc3\x98'
+True</code></pre>
+            </figure>
+          </div>
+        </div>
+        <p>There should be no surprises here. Bytes get decoded to Unicode and Unicode gets encoded to bytes. As long as you remember what you are converting, you'll be fine. If you stopped reading here you would understand enough to work with strings for most of what you'll write. Let's dig a little deeper, though, and look at what can go wrong and why.</p>
+        <h2>Why Am I Getting This Error?</h2>
+        <p>If you've spent much time with Python you will have undoubtedly encountered at least a few Unicode related errors. These errors are often confusing and misleading if you don't understand what's going on. Let's generate our first error message--technically, it's a warning:</p>
+        <div class="row">
+          <div class="col-md-6">
+            <figure>
+              <figcaption>Python 2</figcaption>
+                <pre>
+<code>&gt;&gt;&gt; b'\xc3\x98' == u'\u00d8'
+__main__:1: UnicodeWarning: Unicode equal comparison failed to convert both arguments to Unicode - interpreting them as being unequal
+False</code></pre>
+            </figure>
+          </div>
+          <div class="col-md-6">
+            <figure>
+              <figcaption>Python 3</figcaption>
+              <pre>
+<code>&gt;&gt;&gt; b'\xc3\x98' == u'\u00d8'
+False</code></pre>
+            </figure>
+          </div>
+        </div>
+        <p>That both of these evaluate to false is hopefully not too surprising--we've already seen these are two different beasts. The warning message we get with Python 2 is pretty clear about the fact that it is trying to convert both sides to Unicode and failing. Why don't we get a warning with Python 3? Let's look at another example:</p>
+        <div class="row">
+          <div class="col-md-6">
+            <figure>
+              <figcaption>Python 2</figcaption>
+              <pre>
+<code>&gt;&gt;&gt; b'f' == u'f'
+True</code></pre>
+            </figure>
+          </div>
+          <div class="col-md-6">
+            <figure>
+              <figcaption>Python 3</figcaption>
+              <pre>
+<code>&gt;&gt;&gt; b'f' == u'f'
+False</code></pre>
+            </figure>
+          </div>
+        </div>
+        <p>The plot thickens. Let's deal with Python 3 first since this is the easier one. The gory details are in <a href="https://www.python.org/dev/peps/pep-3137/">PEP 3137</a>, but I'll go ahead and give you the spoiler. <strong>Python 3 will always return false when comparing byte strings with Unicode strings.</strong></p>
+        <p>So what's going on in the Python 2 examples? The warning message we got earlier gives us a clue that some sort of type coercion is going on. In fact, if we look at <a href="https://www.python.org/dev/peps/pep-0100/">PEP 100</a> this is exactly what it's doing. <strong>Python 2 will always try to convert a byte string to Unicode when comparing it to another Unicode string.</strong> We know that converting a byte string to Unicode requires an encoding, so what is Python using here? The answer is a little complicated, but generally, you should assume it is using ASCII. Our last example should make more sense if we imagine what's really happening on the left side of that comparison is:</p>
+        <figure>
+          <figcaption>Python 2</figcaption>
+          <pre>
+<code>&gt;&gt;&gt; b'f'.decode('ascii')
+u'f'</code></pre>
+        </figure>
+        <p>Let's try doing the same thing with our first example:</p>
+        <div class="row">
+          <div class="col-md-6">
+            <figure>
+              <figcaption>Python 2</figcaption>
+              <pre>
+<code class="python">&gt;&gt;&gt; b'\xc3\x98'.decode('ascii')
+Traceback (most recent call last):
+  File "&lt;stdin&gt;", line 1, in <module>
+UnicodeDecodeError: 'ascii' codec can't decode byte 0xc3 in position 0: ordinal not in range(128)</code></pre>
+            </figure>
+          </div>
+          <div class="col-md-6">
+            <figure>
+              <figcaption>Python 3</figcaption>
+              <pre>
+<code class="python">&gt;&gt;&gt; b'\xc3\x98'.decode('ascii')
+Traceback (most recent call last):
+  File "&lt;stdin&gt;", line 1, in <module>
+UnicodeDecodeError: 'ascii' codec can't decode byte 0xc3 in position 0: ordinal not in range(128)</code></pre>
+            </figure>
+          </div>
+        </div>
+        <p>There it is. The dreaded <code>UnicodeDecodeError</code>. At least Python 2 and 3 are doing the same thing. You should know enough now to figure out what's happening here. We take our byte string and try to decode it as ASCII. The first byte in our sequence, <code>\xc3</code>, isn't a valid ASCII byte, so clearly this byte string isn't ASCII. Remember our rule: <em>If you are dealing with bytes you need to know what encoding those bytes are.</em></p>
+        <p>We're going to do something a little crazy now, and try encoding a byte string. Just bear with me:</p>
+        <div class="row">
+          <div class="col-md-6">
+            <figure>
+              <figcaption>Python 2</figcaption>
+                <pre>
+<code class="python">&gt;&gt;&gt; b'\xc3\x98'.encode('utf-8')
+Traceback (most recent call last):
+  File "&lt;stdin&gt;", line 1, in <module>
+UnicodeDecodeError: 'ascii' codec can't decode byte 0xc3 in position 0: ordinal not in range(128)</code></pre>
+            </figure>
+          </div>
+          <div class="col-md-6">
+            <figure>
+              <figcaption>Python 3</figcaption>
+              <pre>
+<code class="python">&gt;&gt;&gt; b'\xc3\x98'.encode('utf-8')
+Traceback (most recent call last):
+  File "&lt;stdin&gt;", line 1, in <module>
+AttributeError: 'bytes' object has no attribute 'encode'</code></pre>
+            </figure>
+          </div>
+        </div>
+        <p>There's a lot going on here. Your first instinct should hopefully be to question why we are encoding a byte string. We shouldn't, but that's not going to stop us from doing it <em>all the time</em>. This is an easy mistake to make in Python 2 where your strings, by default, are byte strings. The error message is especially insidious in Python 2 because it masks the real problem. Python 3 is a bit clearer. Byte strings in Python 3 don't even have an <code>encode</code> method (and Unicode strings don't have a <code>decode</code> method). At first glance, the error we get for Python 2 doesn't make any sense. We get a <code>UnicodeDecodeError</code> while we are trying to encode, and we are using UTF-8, not ASCII. PEP 100 strikes again. Python will first try to coerce the byte string to Unicode using ASCII before encoding it to UTF-8.</p>
+        <p>We'll finish up this section with a few more examples of what happens when you try to mix and match byte strings and Unicode. By now, you should understand why this doesn't work.</p>
+        <div class="row">
+          <div class="col-md-6">
+            <figure>
+              <figcaption>Python 2</figcaption>
+              <pre>
+<code class="python">&gt;&gt;&gt; u'fo' + b'\xc3\x98'
+Traceback (most recent call last):
+  File "&lt;stdin&gt;", line 1, in &lt;module&gt;
+UnicodeDecodeError: 'ascii' codec can't decode byte 0xc3 in position 0: ordinal not in range(128)</code>
+<code class="python">&gt;&gt;&gt; '-'.join([u'fo', b'\xc3x98'])
+Traceback (most recent call last):
+  File "&lt;stdin&gt;", line 1, in &lt;module&gt;
+UnicodeDecodeError: 'ascii' codec can't decode byte 0xc3 in position 0: ordinal not in range(128)</code></pre>
+            </figure>
+          </div>
+          <div class="col-md-6">
+            <figure>
+              <figcaption>Python 3</figcaption>
+              <pre>
+<code class="python">&gt;&gt;&gt; u'fo' + b'\xc3\x98'
+Traceback (most recent call last):
+  File "&lt;stdin&gt;", line 1, in &lt;module&gt;
+TypeError: Can't convert 'bytes' object to str implicitly</code>
+<code class="python">&gt;&gt;&gt; '-'.join([u'fo', b'\xc3\x98'])
+Traceback (most recent call last):
+  File "&lt;stdin&gt;", line 1, in &lt;module&gt;
+TypeError: sequence item 1: expected str instance, bytes found</code></pre>
+            </figure>
+          </div>
+        </div>
+        <h2>Why Am I Getting These Weird Characters?</h2>
+        <p>In most of the cases we've seen so far, Python lets us know when we've done something stupid. The worst pitfalls of encoding problems are the ones we don't discover until it's too late. Let's start with a contrived example:</p>
+        <div class="row">
+          <div class="col-md-6">
+            <figure>
+              <figcaption>Python 2</figcaption>
+              <pre>
+<code class="python">&gt;&gt;&gt; u'\u00d8'.encode('utf-8').decode('latin-1')
+u'\xc3\x98'</code></pre>
+            </figure>
+          </div>
+          <div class="col-md-6">
+            <figure>
+              <figcaption>Python 3</figcaption>
+              <pre>
+<code class="python">&gt;&gt;&gt; u'\u00d8'.encode('utf-8').decode('latin-1')
+'Ã\x98'</code></pre>
+            </figure>
+          </div>
+        </div>
+        <p>The first thing to note is that we haven't generated any errors. We started with a Unicode string, converted it to a byte string and converted it back to Unicode, just the way we are supposed to. No errors here. The next thing to note is that we didn't end up where we started. The Unicode character we started with, Ø, has a different sequence of bytes in UTF-8 than it does in latin-1.</p>
+        <p>Let's imagine a more realistic scenario:</p>
+        <div class="row">
+          <div class="col-md-6">
+            <figure>
+              <figcaption>Python 2</figcaption>
+              <pre>
+<code class="python">&gt;&gt;&gt; with open('foo.txt', 'wb') as fp:
+...     fp.write(u'\u00d8'.encode('utf-8'))
+# some time later...
+&gt;&gt;&gt; with open('foo.txt', 'rb') as fp:
+...     txt = fp.read()
+&gt;&gt;&gt; txt.decode('utf-8')
+u'\xd8'
+&gt;&gt;&gt; txt.decode('latin-1')
+u'\xc3\x98'</code></pre>
+            </figure>
+          </div>
+          <div class="col-md-6">
+            <figure>
+              <figcaption>Python 3</figcaption>
+              <pre>
+<code class="python">&gt;&gt;&gt; with open('foo.txt', 'wb') as fp:
+...     fp.write(u'\u00d8'.encode('utf-8'))
+# some time later...
+&gt;&gt;&gt; with open('foo.txt', 'rb') as fp:
+...     txt = fp.read()
+&gt;&gt;&gt; txt.decode('utf-8')
+'Ø'
+&gt;&gt;&gt; txt.decode('latin-1')
+'Ã\x98'</code></pre>
+            </figure>
+          </div>
+        </div>
+        <p>Here we see our contrived example played out in an all too common scenario. Files get passed around and edited and we are never really sure what encoding has been used. We can try to determine encoding based on heuristic analysis, but in this case, we see that both encodings are equally likely. There is really no substitute for knowing what encoding you are dealing with.</p>
+  </div> <!-- container -->
+  <script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.1.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+</html>
